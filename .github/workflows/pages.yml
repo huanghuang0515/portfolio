@@ -35,6 +35,9 @@ jobs:
         run: |
           mkdir -p _site
           cp -r index.html assets .nojekyll _site/
+          # 以 commit SHA 戳記 CSS/JS 網址，避免瀏覽器沿用舊快取而看不到更新
+          sed -i "s/__V__/${GITHUB_SHA:0:8}/g" _site/index.html
+          grep -o 'portfolio\.\(css\|js\)?v=[0-9a-f]*' _site/index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:

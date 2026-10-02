@@ -255,6 +255,11 @@
   if (replay) replay.addEventListener('click', play);   /* 重播只播開場，不再跑載入頁 */
 
   if (window.__pfSafety) clearTimeout(window.__pfSafety);
-  if (root.classList.contains('anim')) runLoader(play);  /* 載入頁結束後才播開場 */
-  else finish();                                        /* 減少動態／無動畫：直接完成態 */
+  if (root.classList.contains('anim')) {
+    resetChars();                                       /* 先建好逐字 span 並藏起來，
+                                                           載入頁淡出時才不會閃過整行文字 */
+    runLoader(play);                                    /* 載入頁結束後才播開場 */
+  } else {
+    finish();                                           /* 減少動態／無動畫：直接完成態 */
+  }
 })();

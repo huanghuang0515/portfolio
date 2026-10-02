@@ -245,6 +245,10 @@ body {
 .anim .sun,
 .anim .bird,
 .anim .stripe { opacity: 0; }
+/* 逐字 span 由 JS 建立；建立前先把整個容器藏住，
+   否則載入頁淡出的瞬間會閃過一整行未裁切的原始文字。 */
+.anim .type { visibility: hidden; }
+.is-playing .type { visibility: visible; }
 .anim .type .ch { visibility: hidden; }   /* 逐字浮現：JS 依時序逐字設為 visible */
 
 .is-playing .site-header { animation: headerIn var(--d-header) var(--ease-out) var(--t-header) both; }

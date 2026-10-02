@@ -178,7 +178,66 @@
     resetChars();                                   /* 移除 .anim 後即為全部可見 */
   }
 
-  /* ---- 5 啟動 ---- */
+  /* ---- 5 載入頁 ---- */
+  var LOAD_MIN = 800;                 /* 最短顯示時間，避免一閃而過 */
+  var LOAD_MAX = 3000;                /* 最長等待，資源再慢也要進場 */
+  var LOAD_FADE = 420;                /* 與 CSS 的 .loader--out 轉場時間一致 */
+
+  function stripeSources() {          /* 條紋圖網址取自 CSS 變數，單檔版的 data URI 也適用 */
+    return LAYERS.map(function (layer) {
+      var host = document.querySelector(layer.sel);
+      if (!host) return '';
+      var m = getComputedStyle(host).getPropertyValue('--src').trim().match(/url\(["']?([\s\S]*?)["']?\)/);
+      return m ? m[1] : '';
+    }).filter(Boolean);
+  }
+
+  function runLoader(done) {
+    var el = document.getElementById('loader');
+    var fill = document.getElementById('loaderFill');
+    var pctEl = document.getElementById('loaderPct');
+    if (!el || !fill || !pctEl || !root.classList.contains('loading')) { done(); return; }
+
+    var total = 1, loaded = 0;        /* 1 = 字型 */
+    var startedAt = performance.now();
+    function one() { loaded++; }
+
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(one, one);
+    else one();
+
+    var imgs = Array.prototype.slice.call(document.images);
+    stripeSources().forEach(function (src) { var im = new Image(); im.src = src; imgs.push(im); });
+    total += imgs.length;
+    imgs.forEach(function (im) {
+      if (im.complete) { one(); return; }
+      im.addEventListener('load', one, { once: true });
+      im.addEventListener('error', one, { once: true });   /* 載不到也不能卡住畫面 */
+    });
+
+    var shown = 0, finishing = false;
+
+    function frame() {
+      var elapsed = performance.now() - startedAt;
+      var real = loaded / total;
+      var floor = Math.min(0.9, elapsed / LOAD_MAX);       /* 保底推進：資源再慢，進度條也會動 */
+      var target = finishing ? 1 : Math.min(0.94, Math.max(real, floor));
+      shown += (target - shown) * (finishing ? 0.25 : 0.12);
+      if (target - shown < 0.005) shown = target;
+      fill.style.width = (shown * 100).toFixed(1) + '%';
+      pctEl.textContent = Math.round(shown * 100) + '%';
+
+      if (!finishing && ((loaded >= total && elapsed >= LOAD_MIN) || elapsed >= LOAD_MAX)) finishing = true;
+      if (finishing && shown >= 1) {
+        el.classList.add('loader--out');
+        setTimeout(function () { root.classList.remove('loading'); done(); }, LOAD_FADE);
+        return;
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ---- 6 啟動 ---- */
   buildStripes();
 
   var resizeTimer = null;
@@ -193,21 +252,9 @@
   });
 
   var replay = document.getElementById('replay');
-  if (replay) replay.addEventListener('click', play);
+  if (replay) replay.addEventListener('click', play);   /* 重播只播開場，不再跑載入頁 */
 
-  function start() {
-    if (window.__pfSafety) clearTimeout(window.__pfSafety);
-    if (root.classList.contains('anim')) play();    /* head 已判斷是否尊重 reduce-motion */
-    else finish();
-  }
-
-  /* 等字型就緒再開演，避免打字中途換字型造成跳動；最多等 1.5s */
-  if (document.fonts && document.fonts.ready) {
-    var started = false;
-    var go = function () { if (!started) { started = true; start(); } };
-    document.fonts.ready.then(go);
-    setTimeout(go, 1500);
-  } else {
-    start();
-  }
+  if (window.__pfSafety) clearTimeout(window.__pfSafety);
+  if (root.classList.contains('anim')) runLoader(play);  /* 載入頁結束後才播開場 */
+  else finish();                                        /* 減少動態／無動畫：直接完成態 */
 })();

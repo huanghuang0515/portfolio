@@ -300,6 +300,94 @@ body {
 }
 
 
+
+/* ===========================================================================
+   載入頁
+   沿用首頁的視覺語彙：logo 的兩道弧線（#FFEEF3 / #FEF7DA）、副標的灰 #989898，
+   進度線用太陽粉 → 海鷗紫 → 海面藍，即三個重點色在畫面上出現的順序。
+   預設 display:none —— 無 JS 或開啟「減少動態」時完全不會出現，不會卡住畫面。
+   =========================================================================== */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: min(40px, 5vh);
+  background: #fff;
+}
+.loading .loader { display: flex; }
+
+.loader__logo {
+  position: relative;
+  width: min(264px, 62vw);
+  aspect-ratio: 203 / 59;             /* 與 header 的 logo 同比例 */
+}
+.loader__arc {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: auto;
+  display: block;
+  opacity: 0;
+  animation: loaderArc .9s var(--ease-out) forwards;
+}
+.loader__arc--top    { top: 0; animation-delay: 60ms; }
+.loader__arc--bottom { top: 50%; animation-delay: 160ms; }
+.loader__text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: min(31px, 7.3vw);
+  line-height: 1;
+  letter-spacing: .01em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0;
+  animation: loaderFade .7s var(--ease-out) 260ms forwards;
+}
+
+.loader__track {
+  width: min(220px, 52vw);
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(39, 39, 39, .06);
+  overflow: hidden;
+  opacity: 0;
+  animation: loaderFade .6s var(--ease-out) 420ms forwards;
+}
+.loader__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #FDC6D5, #CBC5FF, #B5DEFF);
+}
+.loader__pct {
+  margin: calc(-1 * min(40px, 5vh) + 14px) 0 0;   /* 緊貼進度線下方 */
+  font-size: 11px;
+  letter-spacing: .14em;
+  font-variant-numeric: tabular-nums;
+  color: #989898;
+  opacity: 0;
+  animation: loaderFade .6s var(--ease-out) 520ms forwards;
+}
+
+/* 結束：整頁淡出上移，隨後由 JS 移除 .loading */
+.loader--out {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity .42s var(--ease-out), transform .42s var(--ease-out);
+  pointer-events: none;
+}
+
+@keyframes loaderArc  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes loaderFade { from { opacity: 0; } to { opacity: 1; } }
+
 /* 觸控裝置：以 padding + 負 margin 擴大點擊範圍，視覺位置不變 */
 @media (pointer: coarse) {
   .nav__link { padding: 11px 8px; margin: -11px -8px; }

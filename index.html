@@ -28,9 +28,13 @@
     var q = location.search + location.hash;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var forced = /[?&#]replay\b/.test(q);           /* 明確要求播放，覆寫 reduce-motion */
-    if (!reduce || forced) d.classList.add('anim'); /* anim = 元素起跑於隱藏態，等 is-playing 才進場 */
-    /* 保險：portfolio.js 若載入失敗，7s 後強制解除隱藏態，畫面不得永遠空白 */
+    if (!reduce || forced) {
+      d.classList.add('anim');     /* anim = 元素起跑於隱藏態，等 is-playing 才進場 */
+      d.classList.add('loading');  /* loading = 先顯示載入頁，資源就緒後才播開場 */
+    }
+    /* 保險：portfolio.js 若載入失敗，7s 後強制掀開載入頁與隱藏態，畫面不得永遠空白 */
     window.__pfSafety = setTimeout(function () {
+      d.classList.remove('loading');
       if (!d.classList.contains('is-playing')) d.classList.remove('anim');
     }, 7000);
   } catch (err) { /* 任何例外都退回完成態 */ }
@@ -51,6 +55,21 @@
        z5–z8 Vector ×4         海鷗
        z9–z11 Typing ×3        三行文字
      =========================================================================== -->
+<!-- ===========================================================================
+     載入頁：沿用首頁的視覺語彙——logo 的兩道弧線、副標的灰，
+     進度線用太陽粉 → 海鷗紫 → 海面藍（畫面上三個重點色的出現順序）。
+     只有 JS 正常且未開啟「減少動態」時才顯示；結束後才播首頁開場動畫。
+     =========================================================================== -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader__logo">
+    <img class="loader__arc loader__arc--top"    src="assets/img/logo-arc-top.svg"    alt="" width="203" height="30">
+    <img class="loader__arc loader__arc--bottom" src="assets/img/logo-arc-bottom.svg" alt="" width="203" height="30">
+    <span class="loader__text">Portfolio</span>
+  </div>
+  <div class="loader__track"><i class="loader__fill" id="loaderFill"></i></div>
+  <p class="loader__pct" id="loaderPct">0%</p>
+</div>
+
 <div class="stage" id="top">
 
   <div class="stripes stripes--a" data-node-id="1:408" aria-hidden="true"></div>

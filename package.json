@@ -1,0 +1,11 @@
+{
+  "name": "yihua-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yi Hua Huang 的作品集首頁，依 Figma 設計稿復刻；純 HTML + CSS + JavaScript，無建置流程、無相依套件。",
+  "scripts": {
+    "start": "node serve.js"
+  },
+  "keywords": ["portfolio", "figma", "static-site"],
+  "license": "UNLICENSED"
+}

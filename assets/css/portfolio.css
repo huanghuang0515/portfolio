@@ -1,0 +1,404 @@
+/* ===========================================================================
+   Yi Hua Huang — Portfolio
+   依 Figma「Portfolio / Desktop - 1」(1440 × 886, node 1:2) 復刻。
+   版面元件全部使用設計稿匯出的 SVG（assets/img/），座標／尺寸取自 Figma 的
+   absoluteRenderBounds，一律以 --u 換算：--u = 1 個設計稿 px，
+   畫面窄於 1440 時整體等比縮小，寬於 1440 時版心置中、條紋與海面滿版延伸。
+
+   時間軸（Figma timeline，5.8s / loop）：
+     0.000s  header 由上方滑入＋淡入          (0 → 11.724%)
+     0.800s  海面色塊淡入                     (13.793 → 23.276%)
+     1.180s  太陽由上方落下＋淡入             (20.345 → 34.483%)
+     1.280s  海面白色條紋由左而右依序淡入      (22.069% + 0.362%/條)
+     1.500s  上下兩層條紋由左而右依序淡入      (25.862% + 0.362%/條)
+     1.620s  「Yi Hua Huang」逐字打字          (27.931 → 39.310%)
+     1.720s  海鷗 1～4 依序淡入＋位移          (29.655 / 34.483 / 39.310 / 44.138%)
+     2.100s  「UI/UX Designer」逐字打字        (36.207 → 48.276%)
+     2.850s  標語逐字打字                      (49.138 → 86.414%)
+   =========================================================================== */
+
+:root {
+  /* 1 個設計稿 px。同時受限於視窗寬與高：高度納入才不會被切掉下半截；
+     上限 1px，畫面再大也不放大。JS 會以 clientWidth/Height 覆寫，避免捲軸誤差。 */
+  --u: min(1px, calc(100vw / 1440), calc(100vh / 886));
+  --ink: #272727;
+  --ease-out: cubic-bezier(0, 0, .58, 1); /* 對應 Figma / motion 的 easeOut */
+
+  --t-header: 0ms;      --d-header: 680ms;
+  --t-sea: 800ms;       --d-sea: 550ms;
+  --t-sun: 1180ms;      --d-sun: 820ms;
+  --t-bird: 1720ms;     --d-bird: 340ms;  --gap-bird: 280ms;
+
+  /* 版心左緣：畫面寬於 1440 時置中，窄於 1440 時貼齊 0。
+     50% 會在各使用點自行解析（其容器都是滿版），故放在 :root 即可。 */
+  --origin: calc(50% - 720 * var(--u));
+
+  --pitch: 15;   /* 條紋間距（設計稿值） */
+  --sw: 8;       /* 單條條紋寬度（設計稿值） */
+  --stripes: design;  /* design：固定設計稿 95 條；fill：填滿容器（手機版） */
+  --layout: desktop;  /* JS 依此決定要不要覆寫 --u */
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+body {
+  background: #fff;
+  color: var(--ink);
+  font-family: 'Nanum Gothic', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', system-ui, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- stage：設計稿的 1440 × 886 畫框 ---------- */
+.stage {
+  position: relative;
+  height: calc(886 * var(--u));
+  overflow: hidden;
+  background: #fff;                        /* frame 1:2 的填色就是純白 */
+}
+/* ---------- 條紋（Group 97 / 98 / 96） ----------
+   每條都是設計稿匯出的 SVG：兩個上下相對的細長三角形＋垂直漸層，
+   所以條紋會由粗到細、由有色到透明，不是等寬色塊。 */
+.stripes {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+}
+.stripe {
+  position: absolute;
+  top: 0;
+  width: calc(var(--sw) * var(--u));
+  height: var(--h, 100%);
+  left: calc(var(--origin) + (var(--x0) + var(--i) * var(--pitch)) * var(--u));
+  background-image: var(--src);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.stripes--a {                              /* Group 97：米色，畫面下半 */
+  top: calc(415 * var(--u));
+  height: calc(359 * var(--u));
+  --x0: 10;
+  --src: url(../img/stripe-a.svg);
+}
+.stripes--b {                              /* Group 98：近白，畫面上半（含 header 底下） */
+  top: 0;
+  height: calc(449 * var(--u));
+  --x0: 10;
+  --src: url(../img/stripe-b.svg);
+  z-index: 2;
+}
+.stripes--c {                              /* Group 96：白色，疊在海面上 */
+  top: 0;
+  height: 100%;                            /* 與 .sea 同框（300u），裁切座標才對得上 */
+  --h: calc(293 * var(--u));               /* 條紋本身只有 293u 高 */
+  --x0: 9;
+  --src: url(../img/stripe-c.svg);
+  /* 與設計稿相同，超出波浪的部分不畫（clipPath 定義在 index.html） */
+  clip-path: url(#waveClip);
+}
+
+/* 無 JS 時的近似退回版本（有 JS 時由 .stripe 元素取代） */
+.stripes--a, .stripes--b, .stripes--c { background-repeat: repeat-x; }
+.stripes--a { background-image: repeating-linear-gradient(90deg, #FEF7DA 0 calc(var(--sw) * var(--u)), transparent calc(var(--sw) * var(--u)) calc(var(--pitch) * var(--u)));
+              -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.06), #000);
+                      mask-image: linear-gradient(180deg, rgba(0,0,0,.06), #000); }
+.stripes--b { background-image: repeating-linear-gradient(90deg, #FFFCEE 0 calc(var(--sw) * var(--u)), transparent calc(var(--sw) * var(--u)) calc(var(--pitch) * var(--u))); }
+.stripes--c { background-image: repeating-linear-gradient(90deg, #fff 0 calc(var(--sw) * var(--u)), transparent calc(var(--sw) * var(--u)) calc(var(--pitch) * var(--u))); }
+.js .stripes--a, .js .stripes--b { background-image: none; }
+.js .stripes--a { -webkit-mask-image: none; mask-image: none; }
+.js .stripes--c { background-image: none; }
+
+/* ---------- 海面（Group 100 / 3:13617） ---------- */
+.sea {
+  position: absolute;
+  left: 0;
+  top: calc(470 * var(--u));
+  width: 100%;
+  height: calc(300 * var(--u));
+  z-index: 3;
+}
+.sea__shape {                              /* Vector 1 / 1:3：白 → #B5DEFF 的波浪色塊 */
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ---------- Header（Frame 2 / 1:1269） ---------- */
+.site-header {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: calc(115 * var(--u));
+  z-index: 5;
+  background: #fff;
+  box-shadow: 0 calc(4 * var(--u)) calc(22.1 * var(--u)) 0 #ffeef3;
+}
+.logo {
+  position: absolute;
+  left: calc(var(--origin) + 143 * var(--u));
+  top: calc(28 * var(--u));
+  width: calc(203 * var(--u));
+  height: calc(59 * var(--u));             /* 兩道弧線 28 → 87.49 */
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+.logo__arc {
+  position: absolute;
+  left: 0;
+  width: calc(203 * var(--u));
+  height: calc(30 * var(--u));
+  transition: transform .45s var(--ease-out);
+}
+.logo__arc--top    { top: 0; }                            /* ink 143, 28 */
+.logo__arc--bottom { top: calc(29.49 * var(--u)); }       /* ink 143, 57.49 */
+.logo:hover .logo__arc--top    { transform: translateY(calc(-2 * var(--u))); }
+.logo:hover .logo__arc--bottom { transform: translateY(calc(2 * var(--u))); }
+.logo__text {
+  position: absolute;
+  left: 0;
+  top: calc(17 * var(--u));                /* 文字框 45 → 69，相對 logo 起點 28 */
+  width: calc(202.88 * var(--u));
+  height: calc(24 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(24 * var(--u));
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.nav { position: absolute; inset: 0; pointer-events: none; }
+.nav__link {
+  position: absolute;
+  top: calc(47 * var(--u));
+  pointer-events: auto;
+  font-size: calc(20 * var(--u));
+  line-height: calc(20 * var(--u));
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink);
+}
+.nav__link:nth-of-type(1) { left: calc(var(--origin) + 860 * var(--u)); }
+.nav__link:nth-of-type(2) { left: calc(var(--origin) + 1012 * var(--u)); }
+.nav__link:nth-of-type(3) { left: calc(var(--origin) + 1186 * var(--u)); }
+.nav__link::after {                        /* hover 底線：取設計稿 logo 兩道弧線的粉／米色 */
+  content: "";
+  position: absolute;
+  left: 0; right: 0;
+  bottom: calc(-8 * var(--u));
+  height: calc(2 * var(--u));
+  background: linear-gradient(90deg, #FFEEF3, #FEF7DA);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform .32s var(--ease-out);
+}
+.nav__link:hover::after,
+.nav__link:focus-visible::after { transform: scaleX(1); }
+.nav__link:focus-visible { outline: 2px solid #f4bed5; outline-offset: calc(6 * var(--u)); border-radius: 2px; }
+
+/* ---------- 太陽／海鷗／文字（z4 以後，畫在 header 之上的層級） ---------- */
+.banner {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+.sun {                                     /* Ellipse 2 / 1:61 */
+  position: absolute;
+  left: calc(var(--origin) + 1124 * var(--u));
+  top: calc(171 * var(--u));
+  width: calc(90 * var(--u));
+  height: calc(90 * var(--u));
+  display: block;
+}
+
+.bird { position: absolute; display: block; }
+.bird--1 { left: calc(var(--origin) + 510 * var(--u)); top: calc(296 * var(--u)); width: calc(149 * var(--u)); height: calc(57 * var(--u)); }
+.bird--2 { left: calc(var(--origin) + 647 * var(--u)); top: calc(261 * var(--u)); width: calc(132 * var(--u)); height: calc(35 * var(--u)); }
+.bird--3 { left: calc(var(--origin) + 824 * var(--u)); top: calc(325 * var(--u)); width: calc(150 * var(--u)); height: calc(76 * var(--u)); }
+.bird--4 { left: calc(var(--origin) + 978 * var(--u)); top: calc(279 * var(--u)); width: calc(116 * var(--u)); height: calc(82 * var(--u)); }
+
+.type {
+  position: absolute;
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-weight: 400;
+  line-height: 1;
+}
+.type__text { display: inline-block; }
+.type--name    { left: calc(var(--origin) + 202 * var(--u));    top: calc(194 * var(--u));    font-size: calc(28 * var(--u)); color: #000; }
+.type--role    { left: calc(var(--origin) + 205.22 * var(--u)); top: calc(236.72 * var(--u)); font-size: calc(25 * var(--u)); color: #989898; }
+.type--tagline { left: calc(var(--origin) + 401 * var(--u));    top: calc(565 * var(--u));    font-size: calc(30 * var(--u)); color: #000; }
+
+/* ---------- 開場動畫（只在 html.anim 時起跑於隱藏態） ---------- */
+.anim .site-header,
+.anim .sea__shape,
+.anim .sun,
+.anim .bird,
+.anim .stripe { opacity: 0; }
+.anim .type .ch { visibility: hidden; }   /* 逐字浮現：JS 依時序逐字設為 visible */
+
+.is-playing .site-header { animation: headerIn var(--d-header) var(--ease-out) var(--t-header) both; }
+.is-playing .sea__shape  { animation: fadeIn var(--d-sea) var(--ease-out) var(--t-sea) both; }
+.is-playing .sun         { animation: dropIn var(--d-sun) var(--ease-out) var(--t-sun) both; }
+.is-playing .bird        { animation: birdIn var(--d-bird) var(--ease-out) var(--delay) both; }
+.is-playing .bird--1 { --delay: var(--t-bird); }
+.is-playing .bird--2 { --delay: calc(var(--t-bird) + var(--gap-bird)); }
+.is-playing .bird--3 { --delay: calc(var(--t-bird) + 2 * var(--gap-bird)); }
+.is-playing .bird--4 { --delay: calc(var(--t-bird) + 3 * var(--gap-bird)); }
+.is-playing .stripe      { animation: fadeIn var(--dur) var(--ease-out) var(--delay) both; }
+
+@keyframes headerIn {
+  from { opacity: 0; transform: translateY(calc(-115 * var(--u))); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(calc(-115 * var(--u))); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes birdIn {
+  from { opacity: 0; transform: translate(calc(-18 * var(--u)), calc(10 * var(--u))); }
+  to   { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- Replay ---------- */
+.replay {
+  position: fixed;
+  right: calc(24 * var(--u));
+  bottom: calc(24 * var(--u));
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 1px solid #f3dce5;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow: 0 4px 18px rgba(255, 190, 210, .35);
+  color: #6f6f6f;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color .25s var(--ease-out), border-color .25s var(--ease-out), transform .25s var(--ease-out);
+}
+.replay:hover { color: var(--ink); border-color: #f0c3d6; transform: translateY(-2px); }
+.replay svg { width: 16px; height: 16px; fill: currentColor; }
+.replay[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .logo__arc, .nav__link::after, .replay { transition: none; }
+}
+
+
+/* 觸控裝置：以 padding + 負 margin 擴大點擊範圍，視覺位置不變 */
+@media (pointer: coarse) {
+  .nav__link { padding: 11px 8px; margin: -11px -8px; }
+}
+
+/* ===========================================================================
+   手機直式版面（≤767px 且為直式）
+   設計稿只有 1440 桌機版，這裡依它的元素、色彩與動態順序重新排版：
+     ‧ 改用實際像素排版（--u: 1px），文字維持可讀級距，不再整張等比縮小
+     ‧ 垂直位置改用 stage 高度百分比，適應各種手機長寬比
+     ‧ 條紋改為填滿容器、間距縮為 11px（維持設計稿 8:15 的寬度比例）
+     ‧ 海面波浪放大到 240% 後取中段，保留設計稿和緩的弧度而不是被壓成陡坡
+   =========================================================================== */
+@media (max-width: 767px) and (orientation: portrait) {
+  :root {
+    --u: 1px;          /* 手機版改用實際像素排版（JS 會讓出控制權） */
+    --layout: mobile;
+    --pitch: 11;
+    --sw: 5.9;
+    --stripes: fill;
+  }
+
+  .stage {
+    height: 100vh;                          /* 舊瀏覽器退回 vh */
+    height: 100dvh;                         /* 含網址列縮放的實際可視高度 */
+  }
+
+  /* ---- 背景三層 ---- */
+  .stripes--b { top: 0;   height: 60%; }
+  .stripes--a { top: 54%; height: 39%; }
+  .sea        { top: 57%; height: 31%; }
+  .sea__shape,
+  .stripes--c { left: -40%; right: auto; width: 240%; }
+  .stripes--c { --h: 100%; }              /* 白條紋填滿海面高度 */
+
+  /* ---- Header ---- */
+  .site-header { height: 64px; }
+  .logo {                                   /* 內部幾何沿用設計稿，整體縮放 */
+    left: 20px;
+    top: 13px;
+    transform: scale(.65);
+    transform-origin: left top;
+  }
+  .nav {
+    inset: 0 14px 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .nav__link {
+    position: static;
+    margin: 0;
+    padding: 12px 6px;                      /* 觸控高度 36px，左右各 6px 視覺間距 */
+    font-size: 12px;
+    line-height: 1;
+  }
+  .nav__link::after { bottom: 6px; }
+
+  /* ---- 太陽／海鷗 ---- */
+  .sun { left: auto; right: 22px; top: 92px; width: 78px; height: 78px; }
+
+  .bird { height: auto; }
+  .bird--1 { left: 3%;  top: 24%; width: 36vw; }
+  .bird--2 { left: 55%; top: 22%; width: 27vw; }
+  .bird--3 { left: 16%; top: 33%; width: 38vw; }
+  .bird--4 { left: 60%; top: 39%; width: 25vw; }
+
+  /* ---- 文字 ---- */
+  .type--name {
+    left: 24px; top: 104px;
+    font-size: 30px; line-height: 1.1;
+  }
+  .type--role {
+    left: 24px; top: 146px;
+    font-size: 20px; line-height: 1.1;
+  }
+  .type--tagline {                          /* 手機版允許換行，逐字浮現不受影響 */
+    left: 24px; right: 24px; top: 63%;
+    width: auto;
+    font-size: 20px; line-height: 1.45;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* ---- 重播鍵 ---- */
+  .replay { right: 16px; bottom: 16px; padding: 9px 14px; font-size: 13px; }
+}
+
+/* 更窄的機型（≤360px）：header 內的 logo 與導覽再收一階，避免互相重疊 */
+@media (max-width: 360px) and (orientation: portrait) {
+  .logo { left: 16px; transform: scale(.52); }
+  .nav { inset: 0 10px 0 auto; gap: 2px; }
+  .nav__link { padding: 12px 4px; font-size: 10.5px; }
+  .type--name { font-size: 26px; }
+  .type--role { font-size: 18px; }
+  .type--tagline { font-size: 18px; }
+  .sun { right: 16px; top: 84px; width: 66px; height: 66px; }
+  .type--name { top: 96px; left: 20px; }
+  .type--role { top: 134px; left: 20px; }
+  .type--tagline { left: 18px; right: 18px; }
+}
